@@ -1,0 +1,66 @@
+---
+- hosts: linode
+  remote_user: root
+  become: yes
+
+  vars_prompt:
+
+    - name: user
+      prompt: new user name
+      private: no
+
+    - name: password
+      prompt: new user password
+      private: yes
+      encrypt: md5_crypt  # need to have python-passlib installed in local machine before we can use it
+      confirm: yes
+      salt_size: 7
+
+  tasks:
+
+    # Corresponding with tasks described in https://www.linode.com/docs/security/securing-your-server/
+
+    - name: add user
+      user: name="{{ user }}" password="{{ password }}" shell="/bin/bash" group=sudo
+
+    - name: configure ssh key
+      authorized_key: user={{ user }} key="{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+    - name: disable password authentication
+      lineinfile:
+        dest=/etc/ssh/sshd_config
+        regexp="^\s*?#?\s*?PasswordAuthentication\s+?.+"
+        line="PasswordAuthentication no"
+      notify:
+        - restart ssh
+
+    - name: disable ssh root login
+      lineinfile:
+        dest=/etc/ssh/sshd_config
+        regexp="^\s*?#?\s*?PermitRootLogin\s+?.+"
+        line="PermitRootLogin no"
+      notify:
+        - restart ssh
+
+    - name: configure iptables
+      template: src=iptables.firewall.rules dest=/etc/iptables.firewall.rules
+      notify:
+        - reload iptables
+
+    - name: install packages
+      apt: name={{ item }} update_cache=yes state=latest
+      with_items:
+        - apache2
+        - git
+        - fail2ban
+
+  handlers:
+
+    # The order of handlers here represents the oder in which they are executed so we ensure ssh is last to ensure that
+    # authentication changes only take at the end of the run.
+
+    - name: reload iptables
+      action: shell /sbin/iptables-restore < /etc/iptables.firewall.rules
+
+    - name: restart ssh
+      service: name=ssh state=restarted
