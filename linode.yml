@@ -56,7 +56,7 @@
 
   handlers:
 
-    # The order of handlers here represents the oder in which they are executed so we ensure ssh is last to ensure that
+    # The order of handlers here represents the order in which they are executed so we ensure ssh is last to ensure that
     # authentication changes only take at the end of the run.
 
     - name: reload iptables
