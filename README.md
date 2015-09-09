@@ -1,7 +1,7 @@
 Linode Ansible Playbook
 =======================
 
-Ansible playbook for configuring and securing a Linode server.
+Ansible playbook for configuring and securing an Ubuntu 14.04.3 LTS Linode server.
 
 Includes steps from the following guides:
 
