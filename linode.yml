@@ -1,6 +1,5 @@
 ---
 - hosts: linode
-  remote_user: root
   become: yes
 
   vars_prompt:
@@ -47,12 +46,25 @@
       notify:
         - reload iptables
 
-    - name: install packages
+    - name: install fail2ban
+      apt: name={{ item }} update_cache=yes state=latest
+      with_items:
+        - fail2ban
+
+    # Installs apache2 and disables the default site
+
+    - name: install apache2
       apt: name={{ item }} update_cache=yes state=latest
       with_items:
         - apache2
-        - git
-        - fail2ban
+
+    - name: remove default apache2 site
+      command: a2disssite *default
+      args:
+        # informs ansible of the expected side effects as a means of determining 'change'
+        removes: /etc/apache2/sites-enabled/*default.conf
+      notify:
+        - restart apache2
 
   handlers:
 
@@ -61,6 +73,9 @@
 
     - name: reload iptables
       action: shell /sbin/iptables-restore < /etc/iptables.firewall.rules
+
+    - name: restart apache2
+      service: name=apache2 state=restarted
 
     - name: restart ssh
       service: name=ssh state=restarted
